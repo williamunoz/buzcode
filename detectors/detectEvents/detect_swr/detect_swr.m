@@ -191,7 +191,7 @@ SR         = par.lfpSampleRate; % lfp sampling rate
 nChan      = par.nChannels;     % number of channels in the recording
 
 % 2) Channels
-if ~all(Channels > 0 & Channels < nChan)
+if ~all(Channels > 0 & Channels <= nChan) % corrected by AFR
     error(['%s: incompatible input for 2nd argument (Channels)\n', ...
             '\tAccording to the .xml file, the user did not supply\n', ...
             '\ta valid list of channels.\n'],mfname);
@@ -745,8 +745,18 @@ for ii = 1:Nepochs
         MaxCounter              = MaxCounter + 1;
         featureTs(MaxCounter)   = maxSample;
         swDiffAll(MaxCounter)   = tempswDiff;
-        ripPowerAll(MaxCounter) = max(ripPower0(maxSample-HalfWinSize:maxSample+HalfWinSize,1));
-    end
+        %ripPowerAll(MaxCounter) = max(ripPower0(maxSample-HalfWinSize:maxSample+HalfWinSize,1));
+        %added by aza to detect very long 
+        if (maxSample-HalfWinSize)<1
+            ripPowerAll(MaxCounter) = max(ripPower0(1:maxSample+HalfWinSize,1));
+        else
+            %aza
+            try
+            ripPowerAll(MaxCounter) = max(ripPower0(maxSample-HalfWinSize:maxSample+HalfWinSize,1));
+            catch
+            ripPowerAll(MaxCounter) = max(ripPower0(maxSample-10:maxSample+10,1));                
+            end        
+        end
 end
 featureTs   = featureTs(1:MaxCounter);
 swDiffAll   = swDiffAll(1:MaxCounter);
@@ -1120,7 +1130,7 @@ end
 %%% GENERATE OUTPUT %%%
 %%%%%%%%%%%%%%%%%%%%%%%
 % 1) swr detections
-SWR.times     = SWR_valid.Ts(:,[2 3])/SR;
+SWR.timestamps     = SWR_valid.Ts(:,[2 3])/SR;
 SWR.peaktimes     = SWR_valid.Ts(:,1)/SR;
 SWR.SwMax  = SWR_valid.SwMax;
 SWR.RipMax = SWR_valid.RipMax;
@@ -1175,15 +1185,16 @@ params.EVENTFILE    = EVENTFILE;
 params.TRAINING     = TRAINING;
 params.DEBUG        = DEBUG;
 
-SWR.detectorparams = params;
-SWR.detectorname = 'detect_swr';
-SWR.detectiondate = today('datetime');
+SWR.detectorinfo.detectionparms = params;
+SWR.detectorinfo.detectorname = 'detect_swr';
+SWR.detectorinfo.detectiondate = today('datetime');
+SWR.detectorinfo.detectionintervals = Epochs;
 
 % save output to Filebase directory
 %save(sprintf('%s_detected_swr%d.mat',Filebase,fileN),'SWR')
 %DL: removed multiple detection version option... should we put this back
 %in as optional user input?
-save(sprintf('%s.SWR.event.mat',Filebase),'SWR') 
+%save(sprintf('%s.SWR.events.mat',Filebase),'SWR') 
 
 % write out log file
 logAnalysisFile(mfilename('fullpath'),pathname);

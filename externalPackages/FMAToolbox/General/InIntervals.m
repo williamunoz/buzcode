@@ -53,8 +53,18 @@ if nargin < 2 | mod(length(varargin),2) ~= 0,
 end
 
 % Check parameters
+intervals = double(intervals);
+values = double(values);
 if ~isdmatrix(intervals) || size(intervals,2) ~= 2,
   error('Incorrect intervals (type ''help <a href="matlab:help InIntervals">InIntervals</a>'' for details).');
+end
+
+if isempty(values)
+    warning('values is an empty vector, returning nothing..')
+    status=[];
+    interval=[];
+    index=[];
+    return
 end
 
 if size(values,1) == 1,

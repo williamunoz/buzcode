@@ -9,14 +9,14 @@ function spikes = bz_GetSpikes(varargin)
 %
 %    spikeGroups     -vector subset of shank IDs to load (Default: all)
 %    region          -string region ID to load neurons from specific region
-%                     (requires sessionInfodata file or units->structures in xml)
+%                     (requires sessionInfo file or units->structures in xml)
 %    UID             -vector subset of UID's to load 
 %    basepath        -path to recording (where .dat/.clu/etc files are)
 %    getWaveforms    -logical (default=true) to load mean of raw waveform data
 %    forceReload     -logical (default=false) to force loading from
 %                     res/clu/spk files
 %    saveMat         -logical (default=false) to save in buzcode format
-%    noPrompts       -logical to supress any user prompts
+%    noPrompts       -logical (default=false) to supress any user prompts
 %    
 % OUTPUTS
 %
@@ -58,10 +58,6 @@ function spikes = bz_GetSpikes(varargin)
 %
 %
 % written by David Tingley, 2017
-
-% TODO
-% - integrate session sessionInfodata in place of xml-LoadParameters
-% - get 'region' input working with session sessionInfodata
 %% Deal With Inputs 
 spikeGroupsValidation = @(x) assert(isnumeric(x) || strcmp(x,'all'),...
     'spikeGroups must be numeric or "all"');
@@ -88,10 +84,10 @@ saveMat = p.Results.saveMat;
 noPrompts = p.Results.noPrompts;
 
 
-[sessionInfo] = bz_getSessionInfo(basepath);
+[sessionInfo] = bz_getSessionInfo(basepath, 'noPrompts', noPrompts);
 
 
-samplingRate = sessionInfo.rates.wideband;
+spikes.samplingRate = sessionInfo.rates.wideband;
 nChannels = sessionInfo.nChannels;
 
 
@@ -120,13 +116,15 @@ disp('loading spikes from clu/res/spk files..')
 % find res/clu/fet/spk files here
 cluFiles = dir([basepath filesep '*.clu*']);  
 resFiles = dir([basepath filesep '*.res*']);
-spkFiles = dir([basepath filesep '*.spk*']);
+if getWaveforms
+    spkFiles = dir([basepath filesep '*.spk*']);
+end
 
 % remove *temp*, *autosave*, and *.clu.str files/directories
 tempFiles = zeros(length(cluFiles),1);
 for i = 1:length(cluFiles) 
     dummy = strsplit(cluFiles(i).name, '.'); % Check whether the component after the last dot is a number or not. If not, exclude the file/dir. 
-    if ~isempty(findstr('temp',cluFiles(i).name)) | ~isempty(findstr('autosave',cluFiles(i).name)) | isempty(str2num(dummy{length(dummy)})) 
+    if ~isempty(findstr('temp',cluFiles(i).name)) | ~isempty(findstr('autosave',cluFiles(i).name)) | isempty(str2num(dummy{length(dummy)})) | find(contains(dummy, 'clu')) ~= length(dummy)-1  
         tempFiles(i) = 1;
     end
 end
@@ -137,14 +135,16 @@ for i = 1:length(resFiles)
         tempFiles(i) = 1;
     end
 end
-resFiles(tempFiles==1)=[];
-tempFiles = zeros(length(spkFiles),1);
-for i = 1:length(spkFiles)
-    if ~isempty(findstr('temp',spkFiles(i).name)) | ~isempty(findstr('autosave',spkFiles(i).name))
-        tempFiles(i) = 1;
+if getWaveforms
+    resFiles(tempFiles==1)=[];
+    tempFiles = zeros(length(spkFiles),1);
+    for i = 1:length(spkFiles)
+        if ~isempty(findstr('temp',spkFiles(i).name)) | ~isempty(findstr('autosave',spkFiles(i).name))
+            tempFiles(i) = 1;
+        end
     end
+    spkFiles(tempFiles==1)=[];
 end
-spkFiles(tempFiles==1)=[];
 
 if isempty(cluFiles)
     disp('no clu files found...')
@@ -161,8 +161,10 @@ for i = 1:length(cluFiles)
 end
 [shanks ind] = sort(shanks);
 cluFiles = cluFiles(ind); %Bug here if there are any files x.clu.x that are not your desired clus
-resFiles = resFiles(ind); 
-spkFiles = spkFiles(ind);
+resFiles = resFiles(ind);
+if getWaveforms
+    spkFiles = spkFiles(ind);
+end
 
 % check if there are matching #'s of files
 if length(cluFiles) ~= length(resFiles) & length(cluFiles) ~= length(spkFiles)
@@ -206,17 +208,20 @@ for i=1:length(cluFiles)
     for c = 1:length(cells)
        spikes.UID(count) = count; % this only works if all shanks are loaded... how do we optimize this?
        ind = find(clu == cells(c));
-       spikes.times{count} = res(ind) ./ samplingRate;
+       spikes.times{count} = res(ind) ./ spikes.samplingRate;
        spikes.shankID(count) = shankID;
        spikes.cluID(count) = cells(c);
 
        %Waveforms    
        if getWaveforms
            wvforms = squeeze(mean(wav(ind,:,:)))-mean(mean(mean(wav(ind,:,:)))); % mean subtract to account for slower (theta) trends
+           if prod(size(wvforms))==length(wvforms)%in single-channel groups wvforms will squeeze too much and will have amplitude on D1 rather than D2
+               wvforms = wvforms';%fix here
+           end
            for t = 1:size(wvforms,1)
               [a(t) b(t)] = max(abs(wvforms(t,:))); 
            end
-           [aa bb] = max(a);
+           [aa bb] = max(a,[],2);
            spikes.rawWaveform{count} = wvforms(bb,:);
            spikes.maxWaveformCh(count) = spkGrpChans(bb);  
            %Regions (needs waveform peak)
@@ -266,6 +271,8 @@ if ~strcmp(spikeGroups,'all')
     spikes.region = removeEmptyCells(spikes.region);
     spikes.cluID(toRemove) = [];
     spikes.shankID(toRemove) = [];
+    
+    if getWaveforms
     for r = 1:length(toRemove)
         if toRemove(r) == 1
          spikes.rawWaveform{r} = [];
@@ -273,6 +280,7 @@ if ~strcmp(spikeGroups,'all')
     end
     spikes.rawWaveform = removeEmptyCells(spikes.rawWaveform);
     spikes.maxWaveformCh(toRemove) = [];
+    end
 end
 %% filter by region input
 if ~isempty(region)
@@ -298,6 +306,8 @@ if ~isempty(region)
     spikes.region = removeEmptyCells(spikes.region);
     spikes.cluID(toRemove) = [];
     spikes.shankID(toRemove) = [];
+    
+    if getWaveforms
     if isfield(spikes,'rawWaveform')
         for r = 1:length(toRemove)
             if toRemove(r) == 1
@@ -306,6 +316,7 @@ if ~isempty(region)
         end
         spikes.rawWaveform = removeEmptyCells(spikes.rawWaveform);
         spikes.maxWaveformCh(toRemove) = [];
+    end
     end
 end
 %% filter by UID input
@@ -322,6 +333,8 @@ if ~isempty(UID)
     spikes.region = removeEmptyCells(spikes.region);
     spikes.cluID(toRemove) = [];
     spikes.shankID(toRemove) = [];
+    
+    if getWaveforms
     for r = 1:length(toRemove)
         if toRemove(r) == 1
          spikes.rawWaveform{r} = [];
@@ -329,20 +342,24 @@ if ~isempty(UID)
     end
     spikes.rawWaveform = removeEmptyCells(spikes.rawWaveform);
     spikes.maxWaveformCh(toRemove) = [];
+    end
 end
 
 %% Generate spindices matrics
-numcells = length(spikes.UID);
-for cc = 1:numcells
+spikes.numcells = length(spikes.UID);
+for cc = 1:spikes.numcells
     groups{cc}=spikes.UID(cc).*ones(size(spikes.times{cc}));
 end
-if numcells>0
+if spikes.numcells>0
     alltimes = cat(1,spikes.times{:}); groups = cat(1,groups{:}); %from cell to array
     [alltimes,sortidx] = sort(alltimes); groups = groups(sortidx); %sort both
     spikes.spindices = [alltimes groups];
 end
 
-
+%% Check if any cells made it through selection
+if isempty(spikes.times) | spikes.numcells == 0
+    spikes = [];
+end
 
 
 

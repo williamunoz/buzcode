@@ -6,7 +6,7 @@ function [lfp] = bz_GetLFP(varargin)
 %
 %  USAGE
 %
-%    [lfp] = GetLFP(channels,<options>)
+%    [lfp] = bz_GetLFP(channels,<options>)
 %
 %  INPUTS
 %
@@ -14,11 +14,17 @@ function [lfp] = bz_GetLFP(varargin)
 %                        list of channels to load (use keyword 'all' for all)
 %                        channID is 0-indexing, a la neuroscope
 %  Name-value paired inputs:
-%    basename           -base file name to load
-%    basepath           - folder in which .lfp file will be found (default
+%    'basepath'           - folder in which .lfp file will be found (default
 %                           is pwd)
-%    intervals          -list of time intervals [0 10; 20 30] to read from 
+%                           folder should follow buzcode standard:
+%                           whateverPath/baseName
+%                           and contain file baseName.lfp
+%    'basename'           -base file name to load
+%    'intervals'          -list of time intervals [0 10; 20 30] to read from 
 %                           the LFP file (default is [0 inf])
+%    'downsample'         -factor to downsample the LFP (i.e. 'downsample',5
+%                           will load a 1250Hz .lfp file at 250Hz)
+%    'noPrompts'          -logical (default) to supress any user prompts
 %
 %  OUTPUT
 %
@@ -56,8 +62,8 @@ function [lfp] = bz_GetLFP(varargin)
 % expand channel selection options (i.e. region or spikegroup)
 % add forcereload
 %% Parse the inputs!
-channelsValidation = @(x) assert(isnumeric(x) || strcmp(x,'all'),...
-    'channels must be numeric or "all"');
+
+channelsValidation = @(x) isnumeric(x) || strcmp(x,'all');
 
 % parse args
 p = inputParser;
@@ -66,12 +72,17 @@ addParameter(p,'basename','',@isstr)
 addParameter(p,'intervals',[],@isnumeric)
 addParameter(p,'restrict',[],@isnumeric)
 addParameter(p,'basepath',pwd,@isstr);
+addParameter(p,'downsample',1,@isnumeric);
 addParameter(p,'saveMat',false,@islogical);
 addParameter(p,'forceReload',false,@islogical);
+addParameter(p,'noPrompts',false,@islogical);
+
 parse(p,varargin{:})
 basename = p.Results.basename;
 channels = p.Results.channels;
+downsamplefactor = p.Results.downsample;
 basepath = p.Results.basepath;
+noPrompts = p.Results.noPrompts;
 
 % doing this so you can use either 'intervals' or 'restrict' as parameters to do the same thing
 intervals = p.Results.intervals;
@@ -110,25 +121,30 @@ else
    lfp.Filename = [basename '.lfp'];
 end
 
-%% things we can parse from xml file
-xml = LoadParameters(fullfile(basepath,[basename '.xml']));
-nChannels = xml.nChannels;
-try
-    samplingRate = xml.lfpSampleRate;
-catch
-     samplingRate = xml.rates.lfp; % old ugliness we need to get rid of
-end
+%% things we can parse from sessionInfo or xml file
 
+sessionInfo = bz_getSessionInfo(basepath, 'noPrompts', noPrompts);
+
+try
+    samplingRate = sessionInfo.lfpSampleRate;
+catch
+    samplingRate = sessionInfo.rates.lfp; % old ugliness we need to get rid of
+end
+samplingRateLFP = samplingRate./downsamplefactor;
+
+if mod(samplingRateLFP,1)~=0
+    error('samplingRate/downsamplefactor must be an integer')
+end
 %% Channel load options
 %Right now this assumes that all means channels 0:nunchannels-1 (neuroscope
 %indexing), we could also add options for this to be select region or spike
 %group from the xml...
 if strcmp(channels,'all')
-    channels = 0:(nChannels-1);
+    channels = sessionInfo.channels;
 end
 
 %% get the data
-disp('loading file...')
+disp('loading LFP file...')
 nIntervals = size(intervals,1);
 % returns lfp/bz format
 for i = 1:nIntervals
@@ -140,20 +156,22 @@ for i = 1:nIntervals
     % load....
     lfp(i).data = bz_LoadBinary([basepath filesep lfp.Filename],...
         'duration',double(lfp(i).duration),...
-                  'frequency',samplingRate,'nchannels',nChannels,...
-                  'start',double(lfp(i).interval(1)),'channels',channels+1);
-    lfp(i).timestamps = [lfp(i).interval(1):(1/samplingRate):...
+                  'frequency',samplingRate,'nchannels',sessionInfo.nChannels,...
+                  'start',double(lfp(i).interval(1)),'channels',channels+1,...
+                  'downsample',downsamplefactor);
+    lfp(i).timestamps = [lfp(i).interval(1):(1/samplingRateLFP):...
                         (lfp(i).interval(1)+(length(lfp(i).data)-1)/...
-                        samplingRate)]';
+                        samplingRateLFP)]';
     lfp(i).channels = channels;
-    lfp(i).samplingRate = samplingRate;
+    lfp(i).samplingRate = samplingRateLFP;
     % check if duration is inf, and reset to actual duration...
     if lfp(i).interval(2) == inf
         lfp(i).interval(2) = length(lfp(i).timestamps)/lfp(i).samplingRate;
         lfp(i).duration = (lfp(i).interval(i,2)-lfp(i).interval(i,1));
     end
     
-    if isfield(xml,'region') && isfield(xml,'channels')
-        lfp(i).region = xml.region(ismember(xml.channels,channels));
+    if isfield(sessionInfo,'region') && isfield(sessionInfo,'channels')
+        [~,~,regionidx] = intersect(lfp(i).channels,sessionInfo.channels,'stable');
+        lfp(i).region = sessionInfo.region(regionidx); % match region order to channel order..
     end
 end
