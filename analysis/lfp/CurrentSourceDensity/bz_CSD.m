@@ -67,12 +67,13 @@ elseif isnumeric(lfp)
     timestamps = [1:length(lfp)]'./samplingRate;
 end
 
-win = p.Results.win*samplingRate;
+%win = p.Results.win*samplingRate;
 
 
 %% Compute CSD
 
-lfp_frag = data(win(1):win(2),channels)*-1;
+%lfp_frag = data(win(1):win(2),channels)*-1;
+lfp_frag = double(data(:,channels));
 
 % detrend
 if doDetrend
@@ -80,25 +81,26 @@ if doDetrend
 end
     
 % temporal smoothing
-if temp_sm > 0
-   for ch = 1:size(lfp_frag,2) 
-       lfp_frag(:,ch) = smooth(lfp_frag(:,ch),temp_sm,'sgolay');
-   end
-end
+% if temp_sm > 0
+%    for ch = 1:size(lfp_frag,2) 
+%        lfp_frag(:,ch) = smooth(lfp_frag(:,ch),temp_sm,'sgolay');
+%    end
+% end
 
 % spatial smoothing
-if spat_sm > 0
-   for t = 1:size(lfp_frag,1) 
-       lfp_frag(t,:) = smooth(lfp_frag(t,:),spat_sm,'lowess');
-   end
-end
+% if spat_sm > 0
+%    for t = 1:size(lfp_frag,1) 
+%        lfp_frag(t,:) = smooth(lfp_frag(t,:),spat_sm,'lowess');
+%    end
+% end
 
 % calculate CSD 
 CSD = diff(lfp_frag,2,2);
 
 % generate output structure
 csd.data = CSD;
-csd.timestamps = timestamps(win(1):win(2));
+%csd.timestamps = timestamps(win(1):win(2));
+csd.timestamps = timestamps;
 csd.samplingRate = samplingRate;
 csd.channels = channels; 
 csd.params.spat_sm = spat_sm;
@@ -107,36 +109,36 @@ csd.params.detrend = doDetrend;
 
 %% Plot
 
-if plotLFP
-    
-    cmax = max(max(CSD)); 
-
-    figure;
-    subplot(1,2,1);
-    contourf(timestamps(win(1):win(2)),1:size(CSD,2),CSD',40,'LineColor','none');hold on;
-    colormap jet; caxis([-cmax cmax]);
-    set(gca,'YDir','reverse');xlabel('time (s)');ylabel('channel');title('CSD'); 
-   
-    subplot(1,2,2);
-    for ch=1:size(lfp_frag,2)
-        offset = 500*(ch-1);
-        sh_tmp = 10e5*(lfp_frag(:,ch)) + offset;
-        plot(timestamps(win(1):win(2)),sh_tmp,'k','LineWidth',1.5); hold on;
-        clear sh_tmp
-    end
-    set(gca,'YDir','reverse','YTickLabel',[]);ylim([-500 offset+500]);xlim([timestamps(win(1)) timestamps(win(2))]);
-    xlabel('time (s)');ylabel('channel');title('LFP');   
-    
-elseif plotCSD  
-    
-     cmax = max(max(CSD)); 
-   
-     figure;
-     contourf(timestamps(win(1):win(2)),1:size(CSD,2),CSD',40,'LineColor','none');hold on;
-     colormap jet; caxis([-cmax cmax]);
-     set(gca,'YDir','reverse');xlabel('time (s)');ylabel('channel');title(CSD); 
-   
-end
+% if plotLFP
+%     
+%     cmax = max(max(CSD)); 
+% 
+%     figure;
+%     subplot(1,2,1);
+%     contourf(timestamps(win(1):win(2)),1:size(CSD,2),CSD',40,'LineColor','none');hold on;
+%     colormap jet; caxis([-cmax cmax]);
+%     set(gca,'YDir','reverse');xlabel('time (s)');ylabel('channel');title('CSD'); 
+%    
+%     subplot(1,2,2);
+%     for ch=1:size(lfp_frag,2)
+%         offset = 500*(ch-1);
+%         sh_tmp = 10e5*(lfp_frag(:,ch)) + offset;
+%         plot(timestamps(win(1):win(2)),sh_tmp,'k','LineWidth',1.5); hold on;
+%         clear sh_tmp
+%     end
+%     set(gca,'YDir','reverse','YTickLabel',[]);ylim([-500 offset+500]);xlim([timestamps(win(1)) timestamps(win(2))]);
+%     xlabel('time (s)');ylabel('channel');title('LFP');   
+%     
+% elseif plotCSD  
+%     
+%      cmax = max(max(CSD)); 
+%    
+%      figure;
+%      contourf(timestamps(win(1):win(2)),1:size(CSD,2),CSD',40,'LineColor','none');hold on;
+%      colormap jet; caxis([-cmax cmax]);
+%      set(gca,'YDir','reverse');xlabel('time (s)');ylabel('channel');title(CSD); 
+%    
+% end
 
 end
 

@@ -48,7 +48,8 @@ function bz_ConcatenateDats(basepath,deleteoriginaldatsbool,sortFiles)
 %    sortFiles               - boolean denoting whether to sort files according 
 %                              to time of recording (1) or
 %                              not (0) and thus sort them alphabetically 
-%                              Default = 0.
+%                              Default = 0. Time of recording is assumed to
+%                              be last 6 digits of filename
 %
 %  OUTPUT
 %     Operates on files in specified folder.  No output variable
@@ -199,9 +200,11 @@ if isunix
     catstring = ['! cat ', cs, ' > ',newdatpath];
 elseif ispc  
     if length(datpaths.amplifier)>1
-        for didx = 1:length(datpaths.amplifier)
-            datpathsplus{didx} = [datpaths.amplifier{didx} '+'];
+        for didx = 1:length(datpaths.amplifier)-1
+            datpathsplus{didx} = [datpaths.amplifier{didx} ' +'];
         end
+        %Last file string shouldn't end with '+'
+        datpathsplus{length(datpaths.amplifier)} = [datpaths.amplifier{length(datpaths.amplifier)}];
     else
         datpathsplus = datpaths.amplifier;
     end

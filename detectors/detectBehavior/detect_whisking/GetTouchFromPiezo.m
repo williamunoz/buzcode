@@ -1,4 +1,4 @@
-function [ EMGwhisk ] = GetWhiskFromPiezo( basePath,varargin )
+function [ Poletouch ] = GetTouchFromPiezo( basePath,varargin )
 %[ EMGwhisk ] = GetWhiskFromEMG(basePath ) 
 %This is a detector that extracts whisking/nonwhisking epochs from 
 %implanted EMG in the whisker pad. Extracts also the EMG and EMG envelope.
@@ -37,7 +37,7 @@ baseName = bz_BasenameFromBasepath(basePath);
 %%
 abfname = fullfile(basePath,[baseName,'.abf']);
 analogName = fullfile(basePath,['analogin.dat']);
-savefile = fullfile(basePath,[baseName,'.EMGwhisk.touch.mat']);
+savefile = fullfile(basePath,[baseName,'.Poletouch.touch.mat']);
 figfolder = fullfile(basePath,'DetectionFigures');
 
 if ~exist(abfname,'file')
@@ -46,6 +46,7 @@ end
 if ~exist(analogName,'file')
     display('No analogin.dat in basePath/baseName/')
 end
+
 
 %% Clampex File
 
@@ -56,7 +57,7 @@ sf_abf = 1./(si.*10^-6);
 numabfchans = length(abffile(1,:));
 % if ~exist('chanNums','var')
 %     piezochan = listdlg('ListString',file_info.recChNames,...
-%         'PromptString',['Which channel is Whisker? ']);
+%         'PromptString',['Which channel is Pole? ']);
 %     %Replace this with prompt file_info.recChNames
 % end
 % 
@@ -66,11 +67,10 @@ numabfchans = length(abffile(1,:));
 %     %Replace this with prompt file_info.recChNames
 % end
 %%
-
 % pulse_abf = abffile(:,timechan);
 pulse_abf = abffile(:,2);
 % EMG = abffile(:,piezochan);
-EMG = abffile(:,3);
+EMG = abffile(:,1);
 t_abf = [1:length(EMG)]'./sf_abf;
 
 %%
@@ -85,6 +85,7 @@ downsamplefactor = 16; %Downsample to same as the LFP;
 EMG = downsample(EMG,downsamplefactor);
 t_EMG = downsample(t_abf,downsamplefactor);
 sf_down = sf_abf./downsamplefactor;
+
 %%
 
 EMGparms.gausswidth = 0.05;  %Gaussian width for smoothing (s)
@@ -167,7 +168,7 @@ nwh_thresh = EMGsm < EMGparms.NWhthreshold;
 nwh_on = find(nwh_thresh(2:end)>nwh_thresh(1:end-1))+1; %whisking onsets (si)
 nwh_off = find(nwh_thresh(2:end)< nwh_thresh(1:end-1))+1;%whisking offsets (si)
 
-% If data starts/ends in the middle of an epoch, drop first/last trigger
+%If data starts/ends in the middle of an epoch, drop first/last trigger
 if nwh_off(1)<nwh_on(1)
     nwh_off = nwh_off(2:end);
 end
@@ -301,7 +302,7 @@ subplot(4,1,1)
     plot(NWhints',EMGparms.NWhthreshold.*ones(size(NWhints))','r','linewidth',2)
     axis tight
     ylim([-100 100])
-    ylabel('EMG (modZ)');
+    ylabel('Piezo (modZ)');
     
 subplot(4,1,2)
     plot(t_align,EMGz,'k')
@@ -312,7 +313,7 @@ subplot(4,1,2)
     plot(NWhints',EMGparms.NWhthreshold.*ones(size(NWhints))','r','linewidth',2)
     xlim([100 160])
     ylim([-20 40])
-    ylabel('EMG (modZ)');
+    ylabel('Piezo (modZ)');
 
 subplot(4,2,6)
 hist(log10(EMGsm),100)
@@ -321,7 +322,7 @@ plot([1 1].*log10(EMGparms.Whthreshold),get(gca,'ylim'),'g')
 plot([1 1].*log10(EMGparms.NWhthreshold),get(gca,'ylim'),'r')
 
 axis tight
-xlabel('EMG Envelope (modZ)');
+xlabel('Piezo Envelope (modZ)');
 LogScale('x',10)
 xlim([-1.5 max(log10(EMGsm))])
 
@@ -332,7 +333,7 @@ plot(durhist.bins,durhist.Wh,'g','linewidth',2)
 LogScale('x',10)
 xlabel('Duration (s)')
 ylabel('# Epochs')
-legend('NWh','Wh')
+legend('NTouch','Touch')
 
 subplot(4,2,5)
 plot(t_abf-firstpulstime_abf+firstpulstime_lfp,pulse_abf,'k')
@@ -349,19 +350,19 @@ plot(pulset,pulsethreshold.*ones(size(pulset)),'r+')
 xlim(firstpulstime_lfp+[-0.2 0.5])
 ylabel('Intan Pulse Onset')
 
-NiceSave('WhiskingDetection',figfolder,baseName)
+NiceSave('TouchDetection',figfolder,baseName)
 
 %%
 
-EMGwhisk.ints.Wh = Whints;
-EMGwhisk.ints.NWh = NWhints;
-EMGwhisk.detectorparms = EMGparms;
-EMGwhisk.detectorname = 'GetWhiskFromPiezo';
-EMGwhisk.detectiondate = today('datetime');
-EMGwhisk.EMG = EMGz;
-EMGwhisk.EMGsm = EMGsm;
-EMGwhisk.t = t_align;
+Poletouch.ints.Touch = Whints;
+Poletouch.ints.NTouch = NWhints;
+Poletouch.detectorparms = EMGparms;
+Poletouch.detectorname = 'GetTouchFromPiezo';
+Poletouch.detectiondate = today('datetime');
+Poletouch.Pole = EMGz;
+Poletouch.Polesm = EMGsm;
+Poletouch.t = t_align;
 
-save(savefile,'EMGwhisk')
+save(savefile,'Poletouch')
 end
 

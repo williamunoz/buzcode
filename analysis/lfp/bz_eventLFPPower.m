@@ -1,7 +1,7 @@
-function [ csd ] = bz_eventCSD (lfp, events, varargin)
+function [ LFPPower ] = bz_eventLFPPower (lfp, events, varargin)
 
-% [ CSD ] = bz_eventCSD (lfp, events, varargin)
-% Calculates event-triggered (i.e. SWRs) CSD map from a linear array of LFPs
+% [ LFPPower ] = bz_eventLFPpower (lfp, events, varargin)
+% Calculates event-triggered (i.e. SWRs) MUA power map from a linear array of LFPs
 %
 % INPUT
 %    lfp            a buzcode structure with fields lfp.data,
@@ -34,7 +34,7 @@ function [ csd ] = bz_eventCSD (lfp, events, varargin)
 %                                                        eventcsd.params
 %   
 %
-% Antonio FR, Levenstein D, Munoz W - 7/18
+% Munoz W - 190112
 %
 % TODO: Make so it can read from the binary lfp file in chunks instead of from a lfp.mat
 %
@@ -51,11 +51,13 @@ addParameter(p,'plotCSD',true,@islogical);
 addParameter(p,'plotLFP',true,@islogical);
 addParameter(p,'cwin',[]);
 addParameter(p,'lfp',[]);
+addParameter(p,'freqs',[1 128],@isnumeric);
 addParameter(p,'saveMat',true,@islogical)
 addParameter(p,'saveName','eventCSD')
 
 parse(p,varargin{:});
 lfp = p.Results.lfp;
+freqs = p.Results.freqs;
 channels = p.Results.channels;
 samplingRate = p.Results.samplingRate;
 spat_sm = p.Results.spat_sm;
@@ -100,61 +102,45 @@ end
 twin = p.Results.twin*samplingRate;
 events = round(events*samplingRate);
 
-%% Conpute event-triggered LFP average
+%% Filtering data
 
-lfp_temp = nan(twin(1)+twin(2)+1,length(channels),length(events));
+for i = 1:length(channels)
+    data(:,i) = abs(hilbert(bz_Filter(data(:,i),'passband',freqs,'filter','fir1','order',4)));
+%     [~,MUAPower] = FiltNPhase(double(data(:,i)),freqs,samplingRate);
+%     data(:,i) = MUAPower;
+end
+%% Compute event-triggered MUA average
 
 [~,chanidx] = ismember(channels,lfp.channels);
+
+pow_temp = nan(twin(1)+twin(2)+1,length(channels),length(events));
 for e = 1:length(events)
     if events(e)-twin(1) > 0 && events(e)+twin(2) < size(data,1)
-        lfp_temp(:,:,e) = data(events(e)-twin(1):events(e)+twin(2),chanidx);
+        pow_temp(:,:,e) = data(events(e)-twin(1):events(e)+twin(2),chanidx);
     else
     end
 end
 
-lfp_avg = nanmean(lfp_temp,3)*-1;
+pow_avg = nanmean(pow_temp,3)*-1;
 
-%% Conpute CSD
-
-% detrend
-if doDetrend
-    lfp_avg = detrend(lfp_avg')';
-end
-
-% temporal smoothing
-if temp_sm > 0
-    for ch = 1:size(lfp_avg,2)
-        lfp_avg(:,ch) = smooth(lfp_avg(:,ch),temp_sm,'sgolay');
-    end
-end
-
-% spatial smoothing
-if spat_sm > 0
-    for t = 1:size(lfp_avg,1)
-        lfp_avg(t,:) = smooth(lfp_avg(t,:),spat_sm,'lowess');
-    end
-end
-
-% calculate CSD
-CSD = diff(lfp_avg,2,2);
 
 % generate output structure
-eventCSD.CSDdata = CSD;
-eventCSD.LFPdata = lfp_avg;
-eventCSD.timestamps = -twin(1):twin(2);
-eventCSD.samplingRate = samplingRate;
-eventCSD.channels = channels;
-eventCSD.params.spat_sm = spat_sm;
-eventCSD.params.temp_sm = temp_sm;
-eventCSD.params.detrend = doDetrend;
+eventLFPPower.Powerdata = pow_avg;
+eventLFPPower.timestamps = -twin(1):twin(2);
+eventLFPPower.samplingRate = samplingRate;
+eventLFPPower.channels = channels;
+eventLFPPower.params.freqs = freqs;
+eventLFPPower.params.spat_sm = spat_sm;
+eventLFPPower.params.temp_sm = temp_sm;
+eventLFPPower.params.detrend = doDetrend;
 
 if saveMat
-    save(savefile,'eventCSD')
+    save(savefile,'eventLFPPower')
 end
 
 %% Plot
 taxis = (-(twin(1)/samplingRate):(1/samplingRate):(twin(2)/samplingRate))*1e3;
-cmax = max(max(CSD));
+cmax = max(max(pow_avg));
 
 if ~isempty(cwin)
     cmax = cwin;
@@ -164,32 +150,11 @@ if plotLFP
     
     figure;
     subplot(1,2,1);
-    contourf(taxis,1:size(CSD,2),CSD',40,'LineColor','none');hold on;
+    imagesc(taxis,1:size(pow_avg,2),pow_avg');hold on;
     colormap jet; caxis([-cmax cmax]);
-    set(gca,'YDir','reverse');xlabel('time (ms)');ylabel('channel');title('CSD');
-    plot([0 0],[1 size(CSD,2)],'--k');hold on;
-    
-    subplot(1,2,2);
-    for ch=1:size(lfp_avg,2)
-        offset = 300*(ch-1);
-        sh_tmp = 2.5.*(lfp_avg(:,ch)) + offset;
-        plot(taxis,sh_tmp,'k','LineWidth',1); hold on;
-        clear sh_tmp
-    end
-    set(gca,'YDir','reverse','YTickLabel',[]);
-    ylim([-2000 offset+2000]);xlim([taxis(1) taxis(end)]);
-    xlabel('time (ms)');ylabel('channel');title('LFP');
-    plot([0 0],ylim,'--r');hold on;
-    
-elseif plotCSD
-    
-    figure;
-    subplot(1,2,1);
-    contourf(taxis,1:size(CSD,2),CSD',40,'LineColor','none');hold on;
-    colormap jet; caxis([-cmax cmax]);
-    set(gca,'YDir','reverse');xlabel('time (ms)');ylabel('channel');title('CSD');
-    plot([0 0],[1 size(CSD,2)],'--k');hold on;
-    
+    set(gca,'YDir','reverse');xlabel('time (ms)');ylabel('channel');title('LFP Power');
+    plot([0 0],[1 size(pow_avg,2)],'--k');hold on;
+      
 end
 
 NiceSave(saveName,figfolder,baseName)
