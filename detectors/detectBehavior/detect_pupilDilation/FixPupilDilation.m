@@ -46,7 +46,7 @@ end
 
 % figure; plot(puparea_raw,'k');
 
-f = [23320 23360 56510 56730 56910 56990 57530 57640 57690 57880 69510 69600 69600 69650 102900 103100];
+f = [5892 5931 11490 11520 20960 20990 23770 23810 24990 25060 32520 32560 41010 41220 45530 45570 48280 48390 57550 57630 71590 71670 74200 74470 74960 75000];
 badidx = [];    
 for i = 1:2:length(f);
     
@@ -99,7 +99,7 @@ close all;
 
 figure;
 subplot(2,1,2);
-plot(pupildilation.timestamps,pupildilation.puparea_pxl_raw./nanmedian(pupildilation.puparea_pxl_raw),'k'); hold on; 
+plot(pupildilation.timestamps,pupilcorrection.puparea_pxl_raw./nanmedian(pupilcorrection.puparea_pxl_raw),'k'); hold on; 
 plot(pupildilation.timestamps,puparea,'b');
 hold on;
 plot(pupildilation.timestamps(unstableframes),zeros(size(unstableframes)),'r.','markersize',10)
@@ -113,7 +113,7 @@ ylabel({'Pupil Diameter','(medd^-^1)'})
 xlim(pupildilation.t_pulse([1 end]))
 
 subplot(2,2,1);
-[counts,centers] = hist(pupildilation.puparea_pxl_raw./nanmedian(pupildilation.puparea_pxl_raw),linspace(0,4,60));
+[counts,centers] = hist(pupilcorrection.puparea_pxl_raw./nanmedian(pupilcorrection.puparea_pxl_raw),linspace(0,4,60));
 bar(centers,counts,'FaceColor',[1 1 1],'EdgeColor','k')
 hold on;
 [counts,centers] = hist(puparea,linspace(0,4,60));
@@ -125,7 +125,7 @@ xlabel('Pupil Diameter')
 
 subplot(2,2,2)
 noncorr = isnan(puparea); noncorr = find(noncorr');
-noncorr = length(noncorr)+length(trashidx)+1;
+noncorr = length(noncorr)+1;
 totalcorr = length(smallidx)+length(unstableframes)+length(badidx)+1;
 x =[totalcorr noncorr length(puparea)-totalcorr-noncorr];
 labels = {'Corrected','Excluded','Good'};

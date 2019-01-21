@@ -355,9 +355,9 @@ end
 
 %% Concatenating all behavior 
 basePath = pwd;
-behaviorName = 'pupildiameter';
+% behaviorName = 'pupildiameter';
 % behaviorName = 'EMGwhisk';
-% behaviorName = 'Piezotouch';
+behaviorName = 'Piezotouch';
 bz_ConcatenateBehavior(behaviorName,basePath);
 
 
