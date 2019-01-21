@@ -352,3 +352,22 @@ for i = 1:size(mpathdatabase,1)
     bz_LFPfromDat; close all;
 
 end
+
+%% Concatenating all behavior 
+basePath = pwd;
+behaviorName = 'pupildiameter';
+% behaviorName = 'EMGwhisk';
+% behaviorName = 'Piezotouch';
+bz_ConcatenateBehavior(behaviorName,basePath);
+
+
+% Rescaling all
+basePath = pwd;
+[baseFolder,baseName] = fileparts(basePath);
+savefile = fullfile(basePath,[baseName,'.pupildiameter.behavior.mat']);
+load(savefile,'pupildiameter');
+
+pupildiameter.data = pupildiameter.puparea_pxl./nanmedian(pupildiameter.puparea_pxl);
+
+save(savefile,'pupildiameter');
+
