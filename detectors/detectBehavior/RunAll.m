@@ -201,10 +201,10 @@ clear;
 
 %If re-running failed detection w/ manually specified thresholds
 
-%basePath = pwd;
+basePath = pwd;
 
 %Wh
-%GetWhiskFromEMG(basePath,'Whthreshold',0.75,'NWhthreshold',0.75);
+GetWhiskFromEMG(basePath,'Whthreshold',1,'NWhthreshold',1);
 
 %% Touch database and analysis
 
@@ -308,12 +308,12 @@ clear;
 
 %If re-running failed detection w/ manually specified thresholds
 
-%basePath = pwd;
+basePath = pwd;
 
 %Wh
-%GetWhiskFromEMG(basePath,'Whthreshold',1,'NWhthreshold',1,'PulseChannel',2,'EMGChannel',3);
+GetWhiskFromEMG(basePath,'Whthreshold',1.5,'NWhthreshold',1.5,'PulseChannel',2,'EMGChannel',3);
 %Touch
-%GetWhiskFromEMG(basePath,'Whthreshold',0.3,'NWhthreshold',0.3,'PulseChannel',2,'EMGChannel',1,'EMGanalysis',false);
+GetWhiskFromEMG(basePath,'Whthreshold',0.75,'NWhthreshold',0.75,'PulseChannel',2,'EMGChannel',1,'EMGanalysis',false);
 
 %% Main database and concatenation
 
