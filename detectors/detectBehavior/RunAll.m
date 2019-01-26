@@ -311,9 +311,9 @@ clear;
 basePath = pwd;
 
 %Wh
-GetWhiskFromEMG(basePath,'Whthreshold',1.5,'NWhthreshold',1.5,'PulseChannel',2,'EMGChannel',3);
+GetWhiskFromEMG(basePath,'Whthreshold',1,'NWhthreshold',1,'PulseChannel',2,'EMGChannel',3);
 %Touch
-GetWhiskFromEMG(basePath,'Whthreshold',0.75,'NWhthreshold',0.75,'PulseChannel',2,'EMGChannel',1,'EMGanalysis',false);
+GetWhiskFromEMG(basePath,'Whthreshold',1,'NWhthreshold',1,'PulseChannel',2,'EMGChannel',1,'EMGanalysis',false);
 
 %% Main database and concatenation
 
@@ -371,3 +371,5 @@ pupildiameter.data = pupildiameter.puparea_pxl./nanmedian(pupildiameter.puparea_
 
 save(savefile,'pupildiameter');
 
+%% 
+bz_MUAGammafromDat(pwd,'channels',30);
