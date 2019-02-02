@@ -397,8 +397,12 @@ else
     trange = pulset([1 end]);
     numframes = length(puparea);
     t_interp = linspace(trange(1),trange(2),numframes)';
-    timestamps = pulset(1:NumberOfFrames);
     
+    if length(pulset) > NumberOfFrames
+        timestamps = pulset(1:NumberOfFrames);
+    else
+        timestamps = pulset;
+    end  
 end
 
 %% Smooth and normalize the pupil diameter trace
@@ -408,13 +412,13 @@ end
 smoothwin_s = 0.5;  %s
 %smoothwin = 10;  %frames
 smoothwin_frames = round(smoothwin_s.*sf_eff); %Calculate window in frames
-puparea_raw = puparea; %In units of pixels
+puparea_raw = puparea(1:length(timestamps)); %In units of pixels
 
 % if exist('movmedian','builtin')
 %     puparea = movmedian(puparea,smoothwin_frames,'omitnan');
 % else
 %    warning('Function movmedian not detected, I recommend you upgrade to R2016a')
-puparea = smooth(puparea,smoothwin_frames,'moving'); %,'rloess');
+puparea = smooth(puparea(1:length(timestamps)),smoothwin_frames,'moving'); %,'rloess');
 
 %try rloess method... needs percentage of total points span
 % end
@@ -438,12 +442,13 @@ pupildilation.data = puparea;
 pupildilation.t_pulse = pulset;
 pupildilation.puparea_pxl = puparea_raw;
 
-pupildilation.unstabledetection.eyepixelmean = meaneyepixel;
-pupildilation.unstabledetection.eyepixelstd = stdeyepixel;
-pupildilation.unstabledetection.unstableframes = unstableframes;
+pupildilation.unstabledetection.eyepixelmean = meaneyepixel(1:length(timestamps));
+pupildilation.unstabledetection.eyepixelstd = stdeyepixel(1:length(timestamps));
+tempidx = find(unstableframes <= length(timestamps));
+pupildilation.unstabledetection.unstableframes = unstableframes(tempidx);
 
-pupildilation.pupilxy = pupcoords;
-pupildilation.pupilbox = pupbox;
+pupildilation.pupilxy = pupcoords(1:length(timestamps),:);
+pupildilation.pupilbox = pupbox(1:length(timestamps),:);
 
 pupildilation.detectorname = 'GetPupilDilation';
 pupildilation.detectiondate = today('datetime');
@@ -463,7 +468,7 @@ figure;
 subplot(4,1,3)
 plot(timestamps,puparea_raw,'k'); hold on; plot(timestamps,puparea,'b');
 hold on;
-plot(timestamps(unstableframes),zeros(size(unstableframes)),'r.','markersize',10)
+plot(timestamps(unstableframes(tempidx)),zeros(size(unstableframes(tempidx))),'r.','markersize',10)
 hold on
 set(gca,'xticklabel',[])
 ylabel({'Pupil Diameter','(medd^-^1)'})
@@ -497,7 +502,7 @@ subplot(2,2,1)
 colormap('gray')
 imagesc(meanvid)
 hold on
-plot(pupcoords(:,1),pupcoords(:,2),'.')
+plot(pupcoords(1:length(timestamps),1),pupcoords(1:length(timestamps),2),'.')
 title(baseName)
 
 NiceSave('PupilDetection',figfolder,baseName)
