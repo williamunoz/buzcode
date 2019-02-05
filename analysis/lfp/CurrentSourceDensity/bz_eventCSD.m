@@ -163,13 +163,19 @@ end
 if plotLFP
     
     figure;
-    subplot(1,2,1);
+    subplot(1,5,1:3);
     contourf(taxis,1:size(CSD,2),CSD',40,'LineColor','none');hold on;
-    colormap jet; caxis([-cmax cmax]);
+    colormap jet; caxis([-cmax cmax]); 
+    c = colorbar;
+    c.Label.String = 'sink -> source';
+    ylim([1 size(CSD,2)]);
     set(gca,'YDir','reverse');xlabel('time (ms)');ylabel('channel');title('CSD');
+    set(gca,'Ytick',[1:1:size(CSD,2)]);
+    set(gca,'Yticklabels',channels);
+    set(gca,'YGrid','on','Layer','top','GridColor',[0 0 0]);
     plot([0 0],[1 size(CSD,2)],'--k');hold on;
     
-    subplot(1,2,2);
+    subplot(1,5,4:5);
     for ch=1:size(lfp_avg,2)
         offset = 300*(ch-1);
         sh_tmp = 2.5.*(lfp_avg(:,ch)) + offset;
@@ -177,8 +183,8 @@ if plotLFP
         clear sh_tmp
     end
     set(gca,'YDir','reverse','YTickLabel',[]);
-    ylim([-2000 offset+2000]);xlim([taxis(1) taxis(end)]);
-    xlabel('time (ms)');ylabel('channel');title('LFP');
+    ylim([-1500 offset+1500]);xlim([taxis(1) taxis(end)]);
+    xlabel('time (ms)'); title('average LFP');
     plot([0 0],ylim,'--r');hold on;
     
 elseif plotCSD
