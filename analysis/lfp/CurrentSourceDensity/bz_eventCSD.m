@@ -171,7 +171,7 @@ if plotLFP
     ylim([1 size(CSD,2)]);
     set(gca,'YDir','reverse');xlabel('time (ms)');ylabel('channel');title('CSD');
     set(gca,'Ytick',[1:1:size(CSD,2)]);
-    set(gca,'Yticklabels',channels);
+    set(gca,'Yticklabels',channels(2:end-1));
     set(gca,'YGrid','on','Layer','top','GridColor',[0 0 0]);
     plot([0 0],[1 size(CSD,2)],'--k');hold on;
     
