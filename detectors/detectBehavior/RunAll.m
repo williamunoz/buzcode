@@ -200,7 +200,6 @@ end
 clear;
 
 %If re-running failed detection w/ manually specified thresholds
-
 basePath = pwd;
 
 %Wh
@@ -307,11 +306,10 @@ end
 clear;
 
 %If re-running failed detection w/ manually specified thresholds
-
 basePath = pwd;
 
 %Wh
-GetWhiskFromEMG(basePath,'Whthreshold',1,'NWhthreshold',1,'PulseChannel',2,'EMGChannel',3);
+%GetWhiskFromEMG(basePath,'Whthreshold',1,'NWhthreshold',1,'PulseChannel',2,'EMGChannel',3);
 %Touch
 GetWhiskFromEMG(basePath,'Whthreshold',1,'NWhthreshold',1,'PulseChannel',2,'EMGChannel',1,'EMGanalysis',false);
 
