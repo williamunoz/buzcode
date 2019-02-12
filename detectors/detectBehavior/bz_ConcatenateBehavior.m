@@ -109,6 +109,10 @@ end
 
 
 %Collapse and concatenate the fields from the structures
+if isempty(subbeh)
+    behavior = [];
+    return
+end
 behavior = bz_CollapseStruct(subbeh,'match','justcat',true);
 
 tol = 1e-4; %tolerance for difference in sample rates

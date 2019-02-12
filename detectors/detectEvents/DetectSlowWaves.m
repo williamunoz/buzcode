@@ -44,7 +44,7 @@ function [ SlowWaves,VerboseOut ] = DetectSlowWaves( basePath,varargin)
 %           .gammanormwin    window for normalizing gamma power (default: 20s)
 %   'showFig'           -true/false show a quality control figure (default: true)
 %   'saveMat'           -logical (default=true) to save in buzcode format
-%   'forceReload'       -logical (default: false) to re-detect
+%   'forceRedetect'       -logical (default: false) to re-detect
 %   'noPrompts'         -true/false disable any user prompts (default: false)
 %
 %
@@ -72,7 +72,7 @@ filterparms.gammasmoothwin = 0.08; %window for smoothing gamma power (s)
 filterparms.gammanormwin = 20; %window for gamma normalization (s)
 
 p = inputParser;
-addParameter(p,'forceReload',false,@islogical);
+addParameter(p,'forceRedetect',false,@islogical);
 addParameter(p,'saveMat',true,@islogical);
 addParameter(p,'showFig',true,@islogical);
 addParameter(p,'noSpikes',false,@islogical);
@@ -87,7 +87,7 @@ addParameter(p,'noPrompts',false,@islogical);
 addParameter(p,'filterparms',filterparms,filterparmsvalidate);
 parse(p,varargin{:})
 
-FORCEREDETECT = p.Results.forceReload;
+FORCEREDETECT = p.Results.forceRedetect;
 SAVEMAT = p.Results.saveMat;
 SHOWFIG = p.Results.showFig;
 SWChan = p.Results.DetectionChannel;
@@ -113,11 +113,11 @@ joinwindur = 0.01;
 baseName = bz_BasenameFromBasepath(basePath);
 figfolder = fullfile(basePath,'DetectionFigures');
 savefile = fullfile(basePath,[baseName,'.SlowWaves.events.mat']);
-% if exist(savefile,'file') && ~FORCEREDETECT
-%     display(['Slow Oscillation already Detected, loading ',baseName,'.SlowWaves.events.mat'])
-%     SlowWaves = bz_LoadEvents(basePath,'SlowWaves');
-%     return
-% end
+if exist(savefile,'file') && ~FORCEREDETECT
+    display(['Slow Oscillation already Detected, loading ',baseName,'.SlowWaves.events.mat'])
+    SlowWaves = bz_LoadEvents(basePath,'SlowWaves');
+    return
+end
 %% Collect all the Necessary Pieces of Information: Spikes, States, LFP
 
 %Spikes in the CTX Spike Groups - assumes region ('CTX')

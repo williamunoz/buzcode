@@ -25,7 +25,9 @@ arraysizes = cat(1,arraysizes{:});
 
 samesizes = range(arraysizes,1)==0;
 
-if all(samesizes)
+if isempty(numdims)  %why did you give me an empty array?
+    catabledim = 1;
+elseif all(samesizes)
     catabledim = 1:numdims;
 elseif sum(~samesizes)==1
     catabledim = find(~samesizes);
