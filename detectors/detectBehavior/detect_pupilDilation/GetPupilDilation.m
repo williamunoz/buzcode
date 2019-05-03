@@ -237,7 +237,7 @@ for ff = 1:NumberOfFrames
     %Edge detection
     bwframe = vidframe_orig;
     bwframe(~eyemask) = noneyeval;
-    bw = edge(bwframe,'Canny',0.5);
+    bw = edge(bwframe,'Canny',0.4); %0... for more edges...
     
     if SAVEVID && mod(ff,savevidfr)==0 %Show the thresholded image
         subplot(4,4,9);imagesc(bw);

@@ -7,9 +7,9 @@ savefile = fullfile(basePath,[baseName,'.pupildiameter.behavior.mat']);
 savfile = fullfile(basePath,[baseName,'.pupilcorrection.behavior.mat']);
 load(savefile,'pupildilation');
 
-%
-load(savfile,'pupilcorrection');
-pupildilation.puparea_pxl = pupilcorrection.puparea_pxl_raw;
+% uncomment to re-run 
+% load(savfile,'pupilcorrection');
+% pupildilation.puparea_pxl = pupilcorrection.puparea_pxl_raw;
 
 %% Interpolating data associated w/ blinking, below-size-threshold pupil
 puparea_raw = pupildilation.puparea_pxl;
@@ -44,8 +44,15 @@ for i = 1:2:length(f);
     end
 end
 
+%% If needing to eliminate whisker associated noise
+% inFs = 50;
+% lopass = 2;
+% ratio =lopass/(inFs/2) ;
+% 
+% puparea_raw = iosr.dsp.sincFilter(puparea_raw,ratio);
+
 %% Interpolating data associated w/ bad detection
-% figure; plot(puparea_raw,'k');
+figure; plot(puparea_raw,'k');
 
 dpuparea = abs(diff(puparea_raw));
 jumpthresh = mean(dpuparea)+1.*std(dpuparea);
@@ -100,7 +107,8 @@ figure; plot(pupildilation.puparea_pxl,'k'); hold on; plot(puparea_raw,'b');
 %% Excluding data related to squinting (with loss of pupil visibility) and general detection failures.
 % figure; plot(puparea_raw,'k');
 
-trashp = [4000 length(puparea_raw)];
+trashp = [43000 length(puparea_raw)];
+%trashp = [10500 11100 16000 19500 25500 length(puparea_raw)];
 %trashp = []; %to be specified after evaluating pupil detection video;
 trashidx = [];
 for i = 1:2:length(trashp)
@@ -177,6 +185,18 @@ legend(labels,'Location','southoutside','Orientation','horizontal');
 %title(ax2,'Pupil detection outcome');
 
 NiceSave('PupilCorrection',figfolder,baseName);
+
+%% Concatenating & renormalizing
+basePath = pwd;
+bz_ConcatenateBehavior('pupildiameter',basePath);
+
+[baseFolder,baseName] = fileparts(basePath);
+savefile = fullfile(basePath,[baseName,'.pupildiameter.behavior.mat']);
+load(savefile,'pupildiameter');
+
+pupildiameter.data = pupildiameter.puparea_pxl./nanmedian(pupildiameter.puparea_pxl);
+
+save(savefile,'pupildiameter');
 
 %% OLD: Saving corrected eye video w/ RGB tags for blinks, non-detectable pupil, and manual bad epoch exclusion, respectively.
 
