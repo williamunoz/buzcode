@@ -17,7 +17,11 @@ end
 
 %% Figure
 [zFFTspec,mu,sig] = zscore(log10(swFFTspec)');
-[~,mu_th,sig_th] = zscore(log10(thFFTspec)');
+if sum(isinf(log10(thFFTspec(:))))==0
+    [~,mu_th,sig_th] = zscore(log10(thFFTspec)');
+else %For Theta over PSS (ThIRASA)
+    [~,mu_th,sig_th] = zscore((thFFTspec)');
+end
 
  viewwin  =[t_clus(1) t_clus(end)];
  %viewwin  =[32000 34000];
@@ -29,7 +33,7 @@ clusterfig = figure('visible','off');
         set(gca,'YTick',(log2([1 2 4 8 16 32 64 128])))
         set(gca,'YTickLabel',{'1','2','4','8','16','32','64','128'})
         caxis([3.5 6.5])
-        caxis([min(mu)-2.5*max(sig) max(mu)+2.5*max(sig)])
+        caxis([min(mu)-2*max(sig) max(mu)+2*max(sig)])
         xlim(viewwin)
         colorbar('east')
         ylim([log2(swFFTfreqs(1)) log2(swFFTfreqs(end))+0.2])
@@ -42,7 +46,7 @@ clusterfig = figure('visible','off');
         set(gca,'YTick',(log2([1 2 4 8 16 32 64 128])))
         set(gca,'YTickLabel',{'1','2','4','8','16','32','64','128'})
         %caxis([3.5 6.5])
-        caxis([min(mu_th)-2.5*max(sig_th) max(mu_th)+2.5*max(sig_th)])
+        caxis([min(mu_th)-2*max(sig_th) max(mu_th)+2*max(sig_th)])
         xlim(viewwin)
         %colorbar('east')
         ylim([log2(thFFTfreqs(1)) log2(thFFTfreqs(end))+0.2])
@@ -96,10 +100,14 @@ clusterfig = figure('visible','off');
 
         
 %% Figure: Split REM/Arousal  
-IDX_struct = bz_INTtoIDX(SleepState.ints);
-IDX = interp1(IDX_struct.timestamps,IDX_struct.states,t_clus);
+if ~isfield(SleepState,'idx')
+    SleepState.idx = bz_INTtoIDX(SleepState.ints,'statenames',{'WAKE','','NREM','','REM'});
+end
+%Get state at clustering timestamps
+IDX = interp1(SleepState.idx.timestamps,SleepState.idx.states,t_clus,'nearest');
 %IDX(1:t_clus(1)-1)=[];
-NREMtimes = (broadbandSlowWave >swthresh);
+%overSW = (broadbandSlowWave >swthresh);
+%NREMtimes = IDX==3;
 
 if noprompts
     figure('visible','off');
@@ -136,10 +144,10 @@ end
        % imagesc(C{1},C{2},map')
        % axis xy
        % hold on
-        plot(broadbandSlowWave(IDX==2,1),EMG(IDX==2),'b.','markersize',0.1)
+        plot(broadbandSlowWave(IDX==3,1),EMG(IDX==3),'b.','markersize',0.1)
         hold on
         plot(broadbandSlowWave(EMG>EMGthresh & IDX==1,1),EMG(EMG>EMGthresh & IDX==1),'k.','markersize',0.1)
-        plot(broadbandSlowWave(EMG<EMGthresh & IDX==1|IDX==3,1),EMG(EMG<EMGthresh & IDX==1|IDX==3),...
+        plot(broadbandSlowWave(EMG<EMGthresh & IDX==1|IDX==5,1),EMG(EMG<EMGthresh & IDX==1|IDX==5),...
             '.','Color',0.8*[1 1 1],'markersize',0.1)
         plot(swthresh*[1 1],get(gca,'ylim'),'r','LineWidth',1)
         plot(swthresh*[0 1],EMGthresh*[1 1],'r','LineWidth',1)
@@ -152,9 +160,9 @@ end
         %axis xy
        % hold on
         %scatter(thratio(SWStimes==0,1),EMG(SWStimes==0,1),3,IDX(SWStimes==0),'filled')
-        plot(thratio(NREMtimes==0 & IDX==1,1),EMG(NREMtimes==0 & IDX==1,1),'k.','markersize',0.1)
+        plot(thratio(IDX==1,1),EMG(IDX==1,1),'k.','markersize',0.1)
         hold on
-        plot(thratio(NREMtimes==0 & IDX==3,1),EMG(NREMtimes==0 & IDX==3,1),'r.','markersize',0.1)
+        plot(thratio(IDX==5,1),EMG(IDX==5,1),'r.','markersize',0.1)
         xlabel('Narrowband Theta');ylabel('EMG')
         plot(THthresh*[1 1],EMGthresh*[0 1],'r','LineWidth',1)
         plot([0 1],EMGthresh*[1 1],'r','LineWidth',1)
@@ -162,8 +170,10 @@ end
 saveas(gcf,[figloc,recordingname,'_SSCluster2D'],'jpeg')
 %saveas(gcf,['/Users/dlevenstein/Code Library/SleepScoreDevelopment/StateScoreFigures/','ThetaEMGExample'],'jpeg')
 %% Figure: Clustering
-colormat = [[0 0 0];[0 0 1];[1 0 0];[nan nan nan]];
-IDX(IDX==0) = 4;
+colormat = [[0 0 0];[nan nan nan];[0 0 1];[nan nan nan];[1 0 0];[nan nan nan]];
+if any(IDX==0) || any(isnan(IDX)) %not sure why this was here.... but here we are
+    IDX(IDX==0 | isnan(IDX)) = 6;
+end
 coloridx = colormat(IDX,:);
 
 if noprompts
@@ -173,7 +183,7 @@ else
 end
     subplot(1,3,[2,3])
         hold all
-        scatter3(broadbandSlowWave,thratio,EMG,2,coloridx,'filled')
+        scatter3(broadbandSlowWave,thratio,EMG,1,coloridx,'filled')
         %rotate3d
         view(133.7,18.8);
         grid on

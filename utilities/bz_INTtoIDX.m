@@ -10,6 +10,7 @@ function [ IDX,timestamps ] = bz_INTtoIDX(INT,varargin)
 %   'statenames'    cell array of state names (position correponds to state number)
 %   'sf'            desired sampling frequency of the output vector (default: 1s)
 %   'length'        desired length of the index vector (default: max end time)
+%   'noPrompts'     don't prompt user for state without name
 %
 %OUTPUT
 %   IDX:    [len x 1] vector of state indices, where states are identified by
@@ -57,7 +58,12 @@ if isstruct(INT)
     
     %Convert to the cell array format needed for this function 
     for ss = 1:length(statenames)
-        if isempty(statenames{ss}); continue; end
+        if isempty(statenames{ss})
+            continue; 
+        elseif  ~ismember(statenames{ss},fieldstates) 
+            INTtemp{ss} = [];
+            continue; 
+        end
         INTtemp{ss} = INT.([statenames{ss},'state']);
     end
     INT = INTtemp;
